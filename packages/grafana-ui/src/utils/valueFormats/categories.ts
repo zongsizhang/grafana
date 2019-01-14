@@ -309,16 +309,5 @@ export const getCategories = (): ValueFormatCategory[] => [
       { name: 'cubic decimetre', id: 'dm3', fn: toFixedUnit('dm³') },
       { name: 'gallons', id: 'gallons', fn: toFixedUnit('gal') },
     ],
-  },
-  {
-    name: 'Velocity',
-    formats: [
-      { name: 'metres/second (m/s)', id: 'velocityms', fn: toFixedUnit("m/s") },
-      { name: 'litre (L)', id: 'litre', fn: decimalSIPrefix('L') },
-      { name: 'cubic metre', id: 'm3', fn: toFixedUnit('m³') },
-      { name: 'Normal cubic metre', id: 'Nm3', fn: toFixedUnit('Nm³') },
-      { name: 'cubic decimetre', id: 'dm3', fn: toFixedUnit('dm³') },
-      { name: 'gallons', id: 'gallons', fn: toFixedUnit('gal') },
-    ],
-  },
+  }
 ];
