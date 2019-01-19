@@ -7,4 +7,10 @@
   @include media-breakpoint-up(lg) {
     grid-template-columns: repeat(3, 1fr);
   }
+
+  &--cols2 {
+    @include media-breakpoint-up(lg) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
 }

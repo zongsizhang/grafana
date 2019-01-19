@@ -12,7 +12,6 @@ import { QueryEditorRow } from './QueryEditorRow';
 
 // Services
 import { getDatasourceSrv } from 'app/features/plugins/datasource_srv';
-import { BackendSrv, getBackendSrv } from 'app/core/services/backend_srv';
 import config from 'app/core/config';
 
 // Types
@@ -37,7 +36,6 @@ interface State {
 
 export class QueriesTab extends PureComponent<Props, State> {
   datasources: DataSourceSelectItem[] = getDatasourceSrv().getMetricSources();
-  backendSrv: BackendSrv = getBackendSrv();
 
   state: State = {
     isLoadingHelp: false,
