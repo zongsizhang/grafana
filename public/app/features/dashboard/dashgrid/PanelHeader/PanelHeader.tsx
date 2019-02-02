@@ -18,6 +18,7 @@ export interface Props {
   description?: string;
   scopedVars?: string;
   links?: [];
+  isEditing: boolean;
 }
 
 interface ClickCoordinates {

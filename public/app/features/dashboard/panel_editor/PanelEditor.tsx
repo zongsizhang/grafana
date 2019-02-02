@@ -101,6 +101,17 @@ export class PanelEditor extends PureComponent<PanelEditorProps> {
 
     return (
       <div className="panel-editor-container__editor">
+        <div className="panel-editor-top">
+          <div className="navbar-buttons">
+            <button className="btn navbar-button">
+              <i className="fa fa-arrow-left" />
+            </button>
+          </div>
+          <div className="panel-editor-top__input-wrapper">
+            <input className="panel-editor-top__input" type="text" value="Panel Title" />
+            <i className="fa fa-pencil" />
+          </div>
+        </div>
         <div className="panel-editor-tabs">
           {tabs.map(tab => {
             return <TabItem tab={tab} activeTab={activeTab} onClick={this.onChangeTab} key={tab.id} />;

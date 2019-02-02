@@ -27,6 +27,7 @@ export interface Props {
   panel: PanelModel;
   dashboard: DashboardModel;
   plugin: PanelPlugin;
+  isEditing: boolean;
 }
 
 export interface State {
@@ -122,7 +123,7 @@ export class PanelChrome extends PureComponent<Props, State> {
   }
 
   render() {
-    const { panel, dashboard } = this.props;
+    const { panel, dashboard, isEditing } = this.props;
     const { refreshCounter, timeRange, timeInfo } = this.state;
 
     const { datasource, targets, transparent } = panel;
@@ -144,6 +145,7 @@ export class PanelChrome extends PureComponent<Props, State> {
                 description={panel.description}
                 scopedVars={panel.scopedVars}
                 links={panel.links}
+                isEditing={isEditing}
               />
               {panel.snapshotData ? (
                 this.renderPanel(false, panel.snapshotData, width, height)

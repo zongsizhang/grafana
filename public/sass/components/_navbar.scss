@@ -3,7 +3,6 @@
   padding-left: 40px;
   z-index: $zindex-navbar-fixed;
   height: $navbarHeight;
-  padding-right: 20px;
   display: flex;
   flex-grow: 1;
   border-bottom: 1px solid transparent;
@@ -102,7 +101,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  margin-right: $spacer;
+  margin-right: 20px;
 
   &--close {
     display: none;
