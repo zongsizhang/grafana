@@ -144,6 +144,11 @@ export class DashNav extends PureComponent<Props> {
     );
   }
 
+  onPanelTitleChange = (e: React.FormEvent<HTMLInputElement>) => {
+    this.props.fullscreenPanel.title = e.currentTarget.value;
+    this.forceUpdate();
+  };
+
   renderPanelFullscreeMode() {
     const { fullscreenPanel } = this.props;
 
@@ -153,7 +158,8 @@ export class DashNav extends PureComponent<Props> {
           <i className="fa fa-arrow-left" />
         </button>
         <div className="navbar-edit__input-wraper">
-          <input className="navbar-edit__input" type="text" value={fullscreenPanel.title} />
+          <input className="navbar-edit__input" type="text" value={fullscreenPanel.title}
+            onChange={this.onPanelTitleChange} />
           <i className="fa fa-pencil" />
         </div>
       </div>
