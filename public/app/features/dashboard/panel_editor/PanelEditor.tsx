@@ -15,8 +15,6 @@ import { PanelModel } from '../state/PanelModel';
 import { DashboardModel } from '../state/DashboardModel';
 import { PanelPlugin } from 'app/types/plugins';
 
-import { Tooltip } from '@grafana/ui';
-
 interface PanelEditorProps {
   panel: PanelModel;
   dashboard: DashboardModel;
@@ -127,9 +125,7 @@ function TabItem({ tab, activeTab, onClick }: TabItemParams) {
   return (
     <div className="panel-editor-tabs__item" onClick={() => onClick(tab)}>
       <a className={tabClasses}>
-        <Tooltip content={`${tab.text}`} placement="auto">
-          <i className={`gicon gicon-${tab.id}${activeTab === tab.id ? '-active' : ''}`} />
-        </Tooltip>
+        <i className={`gicon gicon-${tab.id}${activeTab === tab.id ? '-active' : ''}`} /> {tab.text}
       </a>
     </div>
   );
