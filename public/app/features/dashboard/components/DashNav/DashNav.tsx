@@ -9,6 +9,7 @@ import { PlaylistSrv } from 'app/features/playlist/playlist_srv';
 
 // Components
 import { DashNavButton } from './DashNavButton';
+import { Tooltip } from '@grafana/ui';
 
 // State
 import { updateLocation } from 'app/core/actions';
@@ -132,7 +133,7 @@ export class DashNav extends PureComponent<Props> {
       <>
         <div>
           <a className="navbar-page-btn" onClick={this.onOpenSearch}>
-            {!this.showBackButton && <i className="gicon gicon-dashboard" />}
+            {!this.isInFullscreenOrSettings && <i className="gicon gicon-dashboard" />}
             {haveFolder && <span className="navbar-page-btn--folder">{folderTitle} / </span>}
             {dashboard.title}
             <i className="fa fa-caret-down" />
@@ -143,22 +144,24 @@ export class DashNav extends PureComponent<Props> {
     );
   }
 
-  get showBackButton() {
-    return this.props.isFullscreen || this.props.editview;
+  get isInFullscreenOrSettings() {
+    return this.props.editview || this.props.isFullscreen;
   }
 
   renderBackButton() {
     return (
       <div className="navbar-edit">
-        <button className="navbar-edit__back-btn" onClick={this.onClose}>
-          <i className="fa fa-arrow-left" />
-        </button>
+        <Tooltip content="Go back (Esc)">
+          <button className="navbar-edit__back-btn" onClick={this.onClose}>
+            <i className="fa fa-arrow-left" />
+          </button>
+        </Tooltip>
       </div>
     );
   }
 
   render() {
-    const { dashboard, onAddPanel  } = this.props;
+    const { dashboard, onAddPanel } = this.props;
     const { canStar, canSave, canShare, showSettings, isStarred } = dashboard.meta;
     const { snapshot } = dashboard;
 
@@ -166,7 +169,7 @@ export class DashNav extends PureComponent<Props> {
 
     return (
       <div className="navbar">
-        {this.showBackButton && this.renderBackButton()}
+        {this.isInFullscreenOrSettings && this.renderBackButton()}
         {this.renderDashboardTitleSearchButton()}
 
         {this.playlistSrv.isPlaying && (
