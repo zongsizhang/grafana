@@ -57,8 +57,9 @@
   font-weight: normal;
   padding-bottom: $btn-padding-y-xl - 3;
   .gicon {
-    font-size: 31px;
-    margin-right: 1rem;
+    height: 32px;
+    width: 32px;
+    margin-right: $space-sm;
   }
 }
 
