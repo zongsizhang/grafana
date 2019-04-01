@@ -21,7 +21,7 @@ export interface Field {
   dateFormat?: string; // Source data format
 }
 
-export interface Tags {
+export interface Labels {
   [key: string]: string;
 }
 
@@ -29,7 +29,7 @@ export interface SeriesData {
   name?: string;
   fields: Field[];
   rows: any[][];
-  tags?: Tags;
+  labels?: Labels;
 }
 
 export interface Column {
@@ -51,15 +51,7 @@ export interface TimeSeries {
   target: string;
   datapoints: TimeSeriesPoints;
   unit?: string;
-}
-
-/** View model projection of a time series */
-export interface TimeSeriesVM {
-  label: string;
-  color: string;
-  data: TimeSeriesValue[][];
-  allIsNull: boolean;
-  allIsZero: boolean;
+  tags?: Labels;
 }
 
 export enum NullValueMode {
@@ -67,9 +59,6 @@ export enum NullValueMode {
   Ignore = 'connected',
   AsZero = 'null as zero',
 }
-
-/** View model projection of many time series */
-export type TimeSeriesVMs = TimeSeriesVM[];
 
 export interface AnnotationEvent {
   annotation?: any;

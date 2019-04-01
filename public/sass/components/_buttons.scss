@@ -59,7 +59,7 @@
   .gicon {
     height: 32px;
     width: 32px;
-    margin-right: $space-sm;
+    margin-right: $space-md
   }
 }
 
@@ -124,7 +124,7 @@
   @include button-outline-variant($btn-inverse-bg);
 }
 .btn-outline-danger {
-  @include button-outline-variant(green);
+  @include button-outline-variant($btn-danger-bg);
 }
 
 .btn-outline-disabled {
@@ -183,8 +183,8 @@ $btn-service-icon-width: 35px;
   left: 0;
   height: 100%;
   top: 0;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding-left: $space-sm;
+  padding-right: $space-sm;
   width: $btn-service-icon-width;
   text-align: center;
 
