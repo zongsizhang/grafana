@@ -8,8 +8,25 @@ import { DashboardModel } from 'app/features/dashboard/state/DashboardModel';
 import { DashboardSearchHit } from 'app/types/search';
 import { ContextSrv } from './context_srv';
 import { FolderInfo, DashboardDTO } from 'app/types';
+import { Observable, from } from 'rxjs';
 
-export class BackendSrv {
+export interface DatasourceRequest {
+  url: string;
+  method?: string;
+  data?: any;
+  retry?: number;
+  requestId?: string;
+  timeout?: angular.IPromise<any>;
+  headers?: { [key: string]: any };
+  silent?: boolean;
+  liveStream?: boolean;
+}
+
+export interface Props {
+  datasourceStream: (options: DatasourceRequest) => Observable<any>;
+}
+
+export class BackendSrv implements Props {
   private inFlightRequests: { [key: string]: Array<angular.IDeferred<any>> } = {};
   private HTTP_REQUEST_CANCELED = -1;
   private noBackendCache: boolean;
@@ -144,11 +161,36 @@ export class BackendSrv {
   resolveCancelerIfExists(requestId: string) {
     const cancelers = this.inFlightRequests[requestId];
     if (!_.isUndefined(cancelers) && cancelers.length) {
+      console.log('Resolving', requestId);
       cancelers[0].resolve();
     }
   }
 
-  datasourceRequest(options: any) {
+  datasourceStream = (options: DatasourceRequest): Observable<any> => {
+    const observable = Observable.create((observer: any) => {
+      const requestId = options.requestId;
+      const subscription = from(this.datasourceRequest(options)).subscribe({
+        next: value => {
+          observer.next(value);
+          observer.complete();
+        },
+        error: error => observer.error(error),
+      });
+
+      const unsubscribe = () => {
+        if (requestId) {
+          this.resolveCancelerIfExists(requestId);
+        }
+        subscription.unsubscribe();
+      };
+
+      return unsubscribe;
+    });
+
+    return observable;
+  };
+
+  datasourceRequest(options: DatasourceRequest) {
     let canceler: angular.IDeferred<any> = null;
     options.retry = options.retry || 0;
 
@@ -279,7 +321,11 @@ export class BackendSrv {
   }
 
   deleteFolder(uid: string, showSuccessAlert: boolean) {
-    return this.request({ method: 'DELETE', url: `/api/folders/${uid}`, showSuccessAlert: showSuccessAlert === true });
+    return this.request({
+      method: 'DELETE',
+      url: `/api/folders/${uid}`,
+      showSuccessAlert: showSuccessAlert === true,
+    });
   }
 
   deleteDashboard(uid: string, showSuccessAlert: boolean) {

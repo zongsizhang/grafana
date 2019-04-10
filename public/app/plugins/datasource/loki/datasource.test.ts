@@ -64,12 +64,12 @@ describe('LokiDatasource', () => {
       done();
     });
 
-    test('should return time series when resultFormat is time_series', async done => {
+    test('should return time series when format is time_series', async done => {
       const ds = new LokiDatasource(instanceSettings, backendSrvMock, templateSrvMock);
       backendSrvMock.datasourceRequest = jest.fn(() => Promise.resolve(testResp));
 
       const options = getQueryOptions<LokiQuery>({
-        targets: [{ expr: 'foo', refId: 'B', resultFormat: 'time_series' }],
+        targets: [{ expr: 'foo', refId: 'B', format: 'time_series' }],
       });
 
       const res = await ds.query(options);
