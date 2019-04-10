@@ -105,7 +105,7 @@ export class LokiDatasource {
       const subscription = interval(1000)
         .pipe(
           map(val => {
-            console.log(val);
+            console.log(val, options['requestId']);
             return this.requestStream(options);
           }),
           mergeMap(value => value)
