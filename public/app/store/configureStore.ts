@@ -1,5 +1,6 @@
 import { createStore, applyMiddleware, compose, combineReducers } from 'redux';
 import thunk from 'redux-thunk';
+import { createEpicMiddleware, Epic, combineEpics } from 'redux-observable';
 // import { createLogger } from 'redux-logger';
 import sharedReducers from 'app/core/reducers';
 import alertingReducers from 'app/features/alerting/state/reducers';
@@ -14,6 +15,14 @@ import usersReducers from 'app/features/users/state/reducers';
 import userReducers from 'app/features/profile/state/reducers';
 import organizationReducers from 'app/features/org/state/reducers';
 import { setStore } from './store';
+import { StoreState } from 'app/types/store';
+import { ActionOf } from 'app/core/redux/actionCreatorFactory';
+import {
+  getExploreDataEpic,
+  queryTransactionStartEpic,
+  processSuccessfulTransactionEpic,
+  processFailedTransactionEpic,
+} from 'app/features/explore/state/epics';
 
 const rootReducers = {
   ...sharedReducers,
@@ -34,15 +43,23 @@ export function addRootReducer(reducers) {
   Object.assign(rootReducers, ...reducers);
 }
 
+const rootEpic: Epic = combineEpics(
+  getExploreDataEpic,
+  queryTransactionStartEpic,
+  processSuccessfulTransactionEpic,
+  processFailedTransactionEpic
+);
+
 export function configureStore() {
+  const epicMiddleware = createEpicMiddleware<ActionOf<any>, ActionOf<any>, StoreState>();
+
   const composeEnhancers = (window as any).__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
 
   const rootReducer = combineReducers(rootReducers);
 
-  if (process.env.NODE_ENV !== 'production') {
-    // DEV builds we had the logger middleware
-    setStore(createStore(rootReducer, {}, composeEnhancers(applyMiddleware(thunk))));
-  } else {
-    setStore(createStore(rootReducer, {}, composeEnhancers(applyMiddleware(thunk))));
-  }
+  const middlewares = process.env.NODE_ENV !== 'production' ? [thunk, epicMiddleware] : [thunk, epicMiddleware];
+
+  setStore(createStore(rootReducer, {}, composeEnhancers(applyMiddleware(...middlewares))));
+
+  epicMiddleware.run(rootEpic);
 }

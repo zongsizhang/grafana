@@ -82,12 +82,7 @@ import {
 import { ActionOf, ActionCreator } from 'app/core/redux/actionCreatorFactory';
 import { LogsDedupStrategy } from 'app/core/logs_model';
 import { parseTime } from '../TimePicker';
-import { map, tap } from 'rxjs/operators';
-import { Subscription } from 'rxjs';
-
-let graphObservable: Subscription = null;
-let tableObservable: Subscription = null;
-let logsObservable: Subscription = null;
+import { getExploreDataAction } from './epics';
 
 /**
  * Updates UI state and save it to the URL
@@ -615,6 +610,11 @@ function runQueriesForType(
     const { datasourceInstance, eventBridge, queries, queryIntervals, range, scanning } = getState().explore[exploreId];
     const datasourceId = datasourceInstance.meta.id;
 
+    if (datasourceInstance.stream) {
+      dispatch(getExploreDataAction({ exploreId, queryOptions, resultGetter, resultType }));
+      return;
+    }
+
     // Run all queries concurrently
     queries.forEach(async (query, rowIndex) => {
       const transaction = buildQueryTransaction(
@@ -626,95 +626,14 @@ function runQueriesForType(
         queryIntervals,
         scanning
       );
-      dispatch(queryTransactionStartAction({ exploreId, resultType, rowIndex, transaction }));
-      if (datasourceInstance.stream) {
-        try {
-          const now = Date.now();
-          const requestId = transaction.options.requestId
-            ? transaction.options.requestId
-            : `explore-request-${rowIndex}-${resultType}`;
-          if (resultType === 'Graph') {
-            if (graphObservable) {
-              graphObservable.unsubscribe();
-              graphObservable = null;
-            }
-            graphObservable = datasourceInstance
-              .stream({ ...transaction.options, requestId })
-              .pipe(
-                map(result => result.data || []),
-                tap((data: any) => eventBridge.emit('data-received', data)),
-                map(data => ({
-                  data,
-                  queryTransactions: getState().explore[exploreId].queryTransactions,
-                })),
-                map(({ data, queryTransactions }) =>
-                  resultGetter ? resultGetter(data, transaction, queryTransactions) : data
-                ),
-                tap(results =>
-                  dispatch(
-                    queryTransactionSuccess(exploreId, transaction.id, results, Date.now() - now, queries, datasourceId)
-                  )
-                )
-              )
-              .subscribe();
-          }
-
-          if (resultType === 'Table') {
-            if (tableObservable) {
-              tableObservable.unsubscribe();
-              tableObservable = null;
-            }
-            tableObservable = datasourceInstance
-              .stream({ ...transaction.options, requestId })
-              .pipe(
-                map(result => result.data || []),
-                tap((data: any) => eventBridge.emit('data-received', data)),
-                map(data => ({
-                  data,
-                  queryTransactions: getState().explore[exploreId].queryTransactions,
-                })),
-                map(({ data, queryTransactions }) =>
-                  resultGetter ? resultGetter(data, transaction, queryTransactions) : data
-                ),
-                tap(results =>
-                  dispatch(
-                    queryTransactionSuccess(exploreId, transaction.id, results, Date.now() - now, queries, datasourceId)
-                  )
-                )
-              )
-              .subscribe();
-          }
-
-          if (resultType === 'Logs') {
-            if (logsObservable) {
-              logsObservable.unsubscribe();
-              logsObservable = null;
-            }
-            logsObservable = datasourceInstance
-              .stream({ ...transaction.options, requestId })
-              .pipe(
-                map(result => result.data || []),
-                tap((data: any) => eventBridge.emit('data-received', data)),
-                map(data => ({
-                  data,
-                  queryTransactions: getState().explore[exploreId].queryTransactions,
-                })),
-                map(({ data, queryTransactions }) =>
-                  resultGetter ? resultGetter(data, transaction, queryTransactions) : data
-                ),
-                tap(results =>
-                  dispatch(
-                    queryTransactionSuccess(exploreId, transaction.id, results, Date.now() - now, queries, datasourceId)
-                  )
-                )
-              )
-              .subscribe();
-          }
-        } catch (response) {
-          eventBridge.emit('data-error', response);
-          dispatch(queryTransactionFailure(exploreId, transaction.id, response, datasourceId));
-        }
-      }
+      dispatch(
+        queryTransactionStartAction({
+          exploreId,
+          resultType,
+          rowIndex,
+          transaction,
+        })
+      );
       try {
         const now = Date.now();
         const res = await datasourceInstance.query(transaction.options);

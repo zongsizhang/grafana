@@ -1,7 +1,7 @@
 // Libraries
 import _ from 'lodash';
 import moment from 'moment';
-import { Observable, forkJoin, interval, EMPTY, merge } from 'rxjs';
+import { Observable, forkJoin, EMPTY, merge } from 'rxjs';
 import { map, mergeMap, combineLatest } from 'rxjs/operators';
 
 // Services & Utils
@@ -75,7 +75,7 @@ export class LokiDatasource {
   }
 
   prepareQueryTarget(target: LokiQuery, options: DataQueryOptions<LokiQuery>) {
-    const liveStream = options.targets[0].format !== 'time_series';
+    const liveStream = false; //options.targets[0].format !== 'time_series';
     const interpolated = this.templateSrv.replace(target.expr);
     const now = moment();
     const liveStreamStart = now.clone().subtract(1, 'seconds');
@@ -92,40 +92,40 @@ export class LokiDatasource {
   }
 
   stream = (options: DataQueryOptions<LokiQuery>): Observable<any> => {
-    const liveStream = options.targets[0].format !== 'time_series';
-    if (liveStream) {
-      return this.webSocketStream(options);
-    }
+    // const liveStream = options.targets[0].format !== 'time_series';
+    // if (liveStream) {
+    //   return this.webSocketStream(options);
+    // }
 
     return this.requestStream(options);
   };
 
-  private webSocketStream = (options: DataQueryOptions<LokiQuery>): Observable<any> => {
-    const result = Observable.create((observer: any) => {
-      const subscription = interval(1000)
-        .pipe(
-          map(val => {
-            console.log(val, options['requestId']);
-            return this.requestStream(options);
-          }),
-          mergeMap(value => value)
-        )
-        .subscribe({
-          next: value => {
-            observer.next(value);
-          },
-        });
+  // private webSocketStream = (options: DataQueryOptions<LokiQuery>): Observable<any> => {
+  //   const result = Observable.create((observer: any) => {
+  //     const subscription = interval(1000)
+  //       .pipe(
+  //         map(val => {
+  //           console.log(val, options['requestId']);
+  //           return this.requestStream(options);
+  //         }),
+  //         mergeMap(value => value)
+  //       )
+  //       .subscribe({
+  //         next: value => {
+  //           observer.next(value);
+  //         },
+  //       });
 
-      const unsubscribe = () => {
-        console.log('unsub datasource:webSocketStream');
-        subscription.unsubscribe();
-      };
+  //     const unsubscribe = () => {
+  //       console.log('unsub datasource:webSocketStream');
+  //       subscription.unsubscribe();
+  //     };
 
-      return unsubscribe;
-    });
+  //     return unsubscribe;
+  //   });
 
-    return result;
-  };
+  //   return result;
+  // };
 
   private requestStream = (options: DataQueryOptions<LokiQuery>): Observable<any> => {
     const emptyStream$ = options.targets.filter(target => !target.expr || target.hide).map(() => EMPTY);
