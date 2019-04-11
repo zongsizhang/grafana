@@ -13,8 +13,7 @@ import {
   queryTransactionFailureAction,
 } from './actionTypes';
 import { DataQuery, QueryHint } from '@grafana/ui/src/types/datasource';
-import { Observable, observable } from 'rxjs';
-import { Observer } from 'rx';
+import { Observable } from 'rxjs';
 import { error } from 'util';
 
 export interface GetExploreDataPayload {
