@@ -1,9 +1,12 @@
 // @ts-ignore
 import _ from 'lodash';
+import { map, tap, mergeMap, filter, catchError, single, takeWhile } from 'rxjs/operators';
+import { from, merge, interval } from 'rxjs';
 import { Epic, ofType } from 'redux-observable';
 import { actionCreatorFactory, ActionOf } from 'app/core/redux';
-import { ExploreId, ResultType, QueryOptions, ExploreItemState } from 'app/types/explore';
-import { map, tap, mergeMap, filter, catchError } from 'rxjs/operators';
+import { DataQuery, QueryHint } from '@grafana/ui/src/types/datasource';
+
+import { ExploreId, ResultType, QueryOptions, ExploreItemState, QueryTransaction } from 'app/types/explore';
 import { buildQueryTransaction, makeTimeSeriesList, updateHistory } from 'app/core/utils/explore';
 import {
   queryTransactionStartAction,
@@ -12,9 +15,7 @@ import {
   scanStopAction,
   queryTransactionFailureAction,
 } from './actionTypes';
-import { DataQuery, QueryHint } from '@grafana/ui/src/types/datasource';
-import { Observable } from 'rxjs';
-import { error } from 'util';
+import { StoreState } from 'app/types';
 
 export interface GetExploreDataPayload {
   exploreId: ExploreId;
@@ -24,6 +25,15 @@ export interface GetExploreDataPayload {
 }
 
 export const getExploreDataAction = actionCreatorFactory<GetExploreDataPayload>('explore/getExploreData').create();
+
+export interface GetQueryResultPayload {
+  exploreId: ExploreId;
+  resultType: ResultType;
+  rowIndex: number;
+  transaction: QueryTransaction;
+}
+
+export const getQueryResultAction = actionCreatorFactory<GetQueryResultPayload>('explore/getQueryResult').create();
 
 export interface ProcessSuccessfulTransactionPayload {
   exploreId: ExploreId;
@@ -49,14 +59,16 @@ export const processFailedTransactionAction = actionCreatorFactory<ProcessFailed
   'explore/processFailedTransactionAction'
 ).create();
 
-export const getExploreDataEpic: Epic = (action$, state$) =>
+export const getExploreDataEpic: Epic<ActionOf<any>, ActionOf<any>, StoreState> = (action$, state$) =>
   action$.pipe(
     ofType(getExploreDataAction.type),
     map(action => {
       const { exploreId, resultType, queryOptions } = action.payload;
-      const { queries, queryIntervals, range, scanning }: Partial<ExploreItemState> = state$.value.explore[exploreId];
+      const { queries, queryIntervals, range, scanning, streaming }: Partial<ExploreItemState> = state$.value.explore[
+        exploreId
+      ];
 
-      return queries.map((query, rowIndex) => {
+      const actions = queries.map((query, rowIndex) => {
         const transaction = buildQueryTransaction(
           query,
           rowIndex,
@@ -64,88 +76,102 @@ export const getExploreDataEpic: Epic = (action$, state$) =>
           queryOptions,
           range,
           queryIntervals,
-          scanning
+          scanning,
+          streaming
         );
 
-        return queryTransactionStartAction({
+        return getQueryResultAction({
           exploreId,
           resultType,
           rowIndex,
           transaction,
         });
       });
+
+      return actions;
     }),
     mergeMap(action => action)
   );
 
-export const queryTransactionStartEpic: Epic = (action$, state$) => {
-  const subscriptions: { [key: string]: any } = {};
+export const getQueryResultEpic: Epic<ActionOf<any>, ActionOf<any>, StoreState> = (action$, state$) => {
   return action$.pipe(
-    ofType(queryTransactionStartAction.type),
+    ofType(getQueryResultAction.type),
     map(action => {
-      const { exploreId, resultType, transaction } = action.payload;
-      if (subscriptions[transaction.id]) {
-        subscriptions[transaction.id].unsubscribe();
-        subscriptions[transaction.id] = null;
-      }
+      const { exploreId, resultType, transaction, rowIndex } = action.payload;
       const {
         datasourceInstance,
         eventBridge,
         queryTransactions,
         queries,
+        streaming,
       }: Partial<ExploreItemState> = state$.value.explore[exploreId];
       const datasourceId = datasourceInstance.meta.id;
       const now = Date.now();
-      // const requestId = transaction.options.requestId
-      //   ? transaction.options.requestId
-      //   : `explore-request-${rowIndex}-${resultType}`;
       const resultGetter =
         resultType === 'Graph' ? makeTimeSeriesList : resultType === 'Table' ? (data: any) => data[0] : null;
 
-      subscriptions[transaction.id] = Observable.create((observer: any) => {
-        datasourceInstance
-          .stream({
-            ...transaction.options,
-          })
-          .pipe(
-            map(result => result.data || []),
-            tap((data: any) => eventBridge.emit('data-received', data)),
-            map(data => (resultGetter ? resultGetter(data, transaction, queryTransactions) : data)),
-            map(result =>
-              processSuccessfulTransactionAction({
+      const startStream$ = from([
+        queryTransactionStartAction({
+          exploreId,
+          resultType,
+          rowIndex,
+          transaction,
+        }),
+      ]);
+
+      const intervalStream$ = interval(1000).pipe(tap(value => console.log(exploreId + ': ' + value)));
+
+      const getQueryStream = (transaction: QueryTransaction, queryTransactions: QueryTransaction[]) =>
+        from(datasourceInstance.query({ ...transaction.options, streaming })).pipe(
+          map(result => result.data || []),
+          tap((data: any) => eventBridge.emit('data-received', data)),
+          map(data => (resultGetter ? resultGetter(data, transaction, queryTransactions) : data)),
+          map(result =>
+            processSuccessfulTransactionAction({
+              exploreId,
+              transactionId: transaction.id,
+              result,
+              latency: Date.now() - now,
+              queries,
+              datasourceId,
+            })
+          ),
+          single(),
+          catchError(response => {
+            eventBridge.emit('data-error', response);
+            return [
+              processFailedTransactionAction({
                 exploreId,
                 transactionId: transaction.id,
-                result,
-                latency: Date.now() - now,
-                queries,
+                response,
                 datasourceId,
-              })
-            ),
-            catchError(response => {
-              eventBridge.emit('data-error', response);
-              return [
-                processFailedTransactionAction({
-                  exploreId,
-                  transactionId: transaction.id,
-                  response,
-                  datasourceId,
-                }),
-              ];
-            })
-          )
-          .subscribe({
-            next: action => observer.next(action),
-            error: action => observer.error(error),
-          });
-      });
+              }),
+            ];
+          })
+        );
 
-      return subscriptions[transaction.id];
+      const liveStream$ = intervalStream$.pipe(
+        map(() => getQueryStream(transaction, queryTransactions)),
+        mergeMap(stream => stream),
+        takeWhile(action => {
+          const queryTransactions: QueryTransaction[] = state$.value.explore[exploreId].queryTransactions;
+          const transaction = queryTransactions.filter(qt => qt.id === action.payload.transactionId)[0];
+          return streaming && transaction && transaction.streaming;
+        })
+      );
+
+      const resultStream$ =
+        streaming && transaction.streaming
+          ? merge(startStream$, liveStream$)
+          : merge(startStream$, getQueryStream(transaction, queryTransactions));
+
+      return resultStream$;
     }),
     mergeMap(actions => actions)
   );
 };
 
-export const processSuccessfulTransactionEpic: Epic = (action$, state$) =>
+export const processSuccessfulTransactionEpic: Epic<ActionOf<any>, ActionOf<any>, StoreState> = (action$, state$) =>
   action$.pipe(
     ofType(processSuccessfulTransactionAction.type),
     map(action => {
@@ -219,7 +245,7 @@ export const processSuccessfulTransactionEpic: Epic = (action$, state$) =>
     mergeMap(actions => actions)
   );
 
-export const processFailedTransactionEpic: Epic = (action$, state$) =>
+export const processFailedTransactionEpic: Epic<ActionOf<any>, ActionOf<any>, StoreState> = (action$, state$) =>
   action$.pipe(
     ofType(processFailedTransactionAction.type),
     map(action => {

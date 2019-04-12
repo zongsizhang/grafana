@@ -1,12 +1,12 @@
-import React, { PureComponent } from 'react';
+import React, { PureComponent, ChangeEvent } from 'react';
 import { connect } from 'react-redux';
 import { hot } from 'react-hot-loader';
 
 import { ExploreId } from 'app/types/explore';
-import { DataSourceSelectItem, RawTimeRange, TimeRange } from '@grafana/ui';
+import { DataSourceSelectItem, RawTimeRange, TimeRange, Switch } from '@grafana/ui';
 import { DataSourcePicker } from 'app/core/components/Select/DataSourcePicker';
 import { StoreState } from 'app/types/store';
-import { changeDatasource, clearQueries, splitClose, runQueries, splitOpen } from './state/actions';
+import { changeDatasource, clearQueries, splitClose, runQueries, splitOpen, toggleLiveStream } from './state/actions';
 import TimePicker from './TimePicker';
 import { ClickOutsideWrapper } from 'app/core/components/ClickOutsideWrapper/ClickOutsideWrapper';
 
@@ -51,6 +51,8 @@ interface StateProps {
   range: RawTimeRange;
   selectedDatasource: DataSourceSelectItem;
   splitted: boolean;
+  streaming: boolean;
+  supportsStreaming: boolean;
 }
 
 interface DispatchProps {
@@ -59,6 +61,7 @@ interface DispatchProps {
   runQuery: typeof runQueries;
   closeSplit: typeof splitClose;
   split: typeof splitOpen;
+  toggleLiveStream: typeof toggleLiveStream;
 }
 
 type Props = StateProps & DispatchProps & OwnProps;
@@ -84,6 +87,11 @@ export class UnConnectedExploreToolbar extends PureComponent<Props, {}> {
     this.props.timepickerRef.current.setState({ isOpen: false });
   };
 
+  onLiveStreamChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { exploreId } = this.props;
+    this.props.toggleLiveStream(exploreId, event.target.checked);
+  };
+
   render() {
     const {
       datasourceMissing,
@@ -94,6 +102,8 @@ export class UnConnectedExploreToolbar extends PureComponent<Props, {}> {
       selectedDatasource,
       splitted,
       timepickerRef,
+      streaming,
+      supportsStreaming,
     } = this.props;
 
     return (
@@ -139,26 +149,35 @@ export class UnConnectedExploreToolbar extends PureComponent<Props, {}> {
                 })}
               </div>
             ) : null}
-            <div className="explore-toolbar-content-item timepicker">
-              <ClickOutsideWrapper onClick={this.onCloseTimePicker}>
-                <TimePicker ref={timepickerRef} range={range} onChangeTime={this.props.onChangeTime} />
-              </ClickOutsideWrapper>
-            </div>
-            <div className="explore-toolbar-content-item">
-              <button className="btn navbar-button navbar-button--no-icon" onClick={this.onClearAll}>
-                Clear All
-              </button>
-            </div>
-            <div className="explore-toolbar-content-item">
-              {createResponsiveButton({
-                splitted,
-                title: 'Run Query',
-                onClick: this.onRunQuery,
-                buttonClassName: 'navbar-button--secondary',
-                iconClassName: loading ? 'fa fa-spinner fa-fw fa-spin run-icon' : 'fa fa-level-down fa-fw run-icon',
-                iconSide: IconSide.right,
-              })}
-            </div>
+            {supportsStreaming && (
+              <div className="explore-toolbar-content-item">
+                <Switch checked={streaming} onChange={this.onLiveStreamChange} label="Live" />
+              </div>
+            )}
+            {!streaming && (
+              <>
+                <div className="explore-toolbar-content-item timepicker">
+                  <ClickOutsideWrapper onClick={this.onCloseTimePicker}>
+                    <TimePicker ref={timepickerRef} range={range} onChangeTime={this.props.onChangeTime} />
+                  </ClickOutsideWrapper>
+                </div>
+                <div className="explore-toolbar-content-item">
+                  <button className="btn navbar-button navbar-button--no-icon" onClick={this.onClearAll}>
+                    Clear All
+                  </button>
+                </div>
+                <div className="explore-toolbar-content-item">
+                  {createResponsiveButton({
+                    splitted,
+                    title: 'Run Query',
+                    onClick: this.onRunQuery,
+                    buttonClassName: 'navbar-button--secondary',
+                    iconClassName: loading ? 'fa fa-spinner fa-fw fa-spin run-icon' : 'fa fa-level-down fa-fw run-icon',
+                    iconSide: IconSide.right,
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -169,7 +188,14 @@ export class UnConnectedExploreToolbar extends PureComponent<Props, {}> {
 const mapStateToProps = (state: StoreState, { exploreId }: OwnProps): StateProps => {
   const splitted = state.explore.split;
   const exploreItem = state.explore[exploreId];
-  const { datasourceInstance, datasourceMissing, exploreDatasources, queryTransactions, range } = exploreItem;
+  const {
+    datasourceInstance,
+    datasourceMissing,
+    exploreDatasources,
+    queryTransactions,
+    range,
+    streaming,
+  } = exploreItem;
   const selectedDatasource = datasourceInstance
     ? exploreDatasources.find(datasource => datasource.name === datasourceInstance.name)
     : undefined;
@@ -182,6 +208,8 @@ const mapStateToProps = (state: StoreState, { exploreId }: OwnProps): StateProps
     range,
     selectedDatasource,
     splitted,
+    streaming,
+    supportsStreaming: datasourceInstance ? datasourceInstance.supportsStreaming : false,
   };
 };
 
@@ -191,6 +219,7 @@ const mapDispatchToProps: DispatchProps = {
   runQuery: runQueries,
   closeSplit: splitClose,
   split: splitOpen,
+  toggleLiveStream: toggleLiveStream,
 };
 
 export const ExploreToolbar = hot(module)(

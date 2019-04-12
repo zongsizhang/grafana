@@ -8,7 +8,6 @@ import { DashboardModel } from 'app/features/dashboard/state/DashboardModel';
 import { DashboardSearchHit } from 'app/types/search';
 import { ContextSrv } from './context_srv';
 import { FolderInfo, DashboardDTO } from 'app/types';
-import { Observable, from } from 'rxjs';
 
 export interface DatasourceRequest {
   url: string;
@@ -22,11 +21,7 @@ export interface DatasourceRequest {
   liveStream?: boolean;
 }
 
-export interface Props {
-  datasourceStream: (options: DatasourceRequest) => Observable<any>;
-}
-
-export class BackendSrv implements Props {
+export class BackendSrv {
   private inFlightRequests: { [key: string]: Array<angular.IDeferred<any>> } = {};
   private HTTP_REQUEST_CANCELED = -1;
   private noBackendCache: boolean;
@@ -165,31 +160,6 @@ export class BackendSrv implements Props {
       cancelers[0].resolve();
     }
   }
-
-  datasourceStream = (options: DatasourceRequest): Observable<any> => {
-    const observable = Observable.create((observer: any) => {
-      const requestId = options.requestId;
-      const subscription = from(this.datasourceRequest(options)).subscribe({
-        next: value => {
-          observer.next(value);
-          observer.complete();
-        },
-        error: error => observer.error(error),
-      });
-
-      const unsubscribe = () => {
-        console.log('unsub -> datasourceStream');
-        if (requestId) {
-          this.resolveCancelerIfExists(requestId);
-        }
-        subscription.unsubscribe();
-      };
-
-      return unsubscribe;
-    });
-
-    return observable;
-  };
 
   datasourceRequest(options: DatasourceRequest) {
     let canceler: angular.IDeferred<any> = null;

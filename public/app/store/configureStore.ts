@@ -19,7 +19,7 @@ import { StoreState } from 'app/types/store';
 import { ActionOf } from 'app/core/redux/actionCreatorFactory';
 import {
   getExploreDataEpic,
-  queryTransactionStartEpic,
+  getQueryResultEpic,
   processSuccessfulTransactionEpic,
   processFailedTransactionEpic,
 } from 'app/features/explore/state/epics';
@@ -45,7 +45,7 @@ export function addRootReducer(reducers) {
 
 const rootEpic: Epic = combineEpics(
   getExploreDataEpic,
-  queryTransactionStartEpic,
+  getQueryResultEpic,
   processSuccessfulTransactionEpic,
   processFailedTransactionEpic
 );

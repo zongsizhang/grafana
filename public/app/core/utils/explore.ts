@@ -106,7 +106,8 @@ export function buildQueryTransaction(
   queryOptions: QueryOptions,
   range: RawTimeRange,
   queryIntervals: QueryIntervals,
-  scanning: boolean
+  scanning: boolean,
+  streaming: boolean
 ): QueryTransaction {
   const { interval, intervalMs } = queryIntervals;
 
@@ -142,6 +143,7 @@ export function buildQueryTransaction(
       __interval: { text: interval, value: interval },
       __interval_ms: { text: intervalMs, value: intervalMs },
     },
+    streaming,
   };
 
   return {
@@ -153,6 +155,7 @@ export function buildQueryTransaction(
     id, // reusing for unique ID
     done: false,
     latency: 0,
+    streaming: streaming === true && resultType === 'Logs',
   };
 }
 
